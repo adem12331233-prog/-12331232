@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>PASSGEN SYSTEM</title>
+
+<style>
+    body {
+        margin: 0;
+        height: 100vh;
+        background: #000;
+        overflow: hidden;
+        font-family: 'Segoe UI', sans-serif;
+        color: #fff;
+    }
+
+    /* النجوم */
+    .star {
+        position: absolute;
+        width: 4px;
+        height: 4px;
+        background: red;
+        border-radius: 50%;
+        opacity: 0.9;
+        animation: fall linear infinite;
+        filter: drop-shadow(0 0 7px red);
+    }
+
+    @keyframes fall {
+        from { transform: translateY(-10vh); }
+        to { transform: translateY(110vh); }
+    }
+
+    /* صندوق الواجهات */
+    .centerBox {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 390px;
+        padding: 35px;
+        text-align: center;
+        background: rgba(20,20,20,0.6);
+        backdrop-filter: blur(12px);
+        border-radius: 18px;
+        box-shadow: 0 0 25px rgba(255,0,0,0.4);
+        animation: fadein 1.1s ease forwards;
+    }
+
+    @keyframes fadein {
+        from { opacity: 0; transform: translate(-50%, -60%); }
+        to { opacity: 1; transform: translate(-50%, -50%); }
+    }
+
+    /* الإطار النيون */
+    .centerBox::before {
+        content: "";
+        position: absolute;
+        inset: -3px;
+        border-radius: 20px;
+        background: linear-gradient(90deg, #ff0000, transparent, #ff0000);
+        background-size: 300% 300%;
+        animation: borderGlow 4s linear infinite;
+        z-index: -1;
+    }
+
+    @keyframes borderGlow {
+        0% { background-position: 0% 50%; }
+        100% { background-position: 100% 50%; }
+    }
+
+    /* صورة المستخدم */
+    .avatar {
+        width: 95px;
+        height: 95px;
+        border-radius: 50%;
+        margin-bottom: 10px;
+        border: 2px solid red;
+        box-shadow: 0 0 20px red;
+    }
+
+    input, button {
+        width: 100%;
+        padding: 14px;
+        margin-top: 12px;
+        border: none;
+        border-radius: 7px;
+        font-size: 16px;
+        transition: 0.25s;
+    }
+
+    input {
+        background: rgba(0,0,0,0.5);
+        border: 1px solid #333;
+        color: #fff;
+    }
+
+    button {
+        background: red;
+        color: #fff;
+        font-weight: bold;
+        cursor: pointer;
+        box-shadow: 0 0 15px red;
+    }
+
+    button:hover {
+        background: #7a0000;
+        transform: scale(1.08);
+        box-shadow: 0 0 20px #ff1a1a;
+    }
+
+    #activationSection, #loginSection, #generatorSection {
+        display: none;
+    }
+
+    #copyMsg, #copyPassMsg {
+        color: #0f0;
+        margin-top: 5px;
+    }
+</style>
+</head>
+<body>
+
+<!-- ====================== صفحة التفعيل ====================== -->
+<div class="centerBox" id="activationSection">
+    <img class="avatar" src="https://i.imgur.com/1XK9FqC.png">
+    <h2 style="margin:0;margin-bottom:5px;">WELCOME BACK!</h2>
+    <p style="opacity:0.8">جاري توليد مفتاح التفعيل…</p>
+
+    <h3 id="timer" style="color:#ff3b3b;margin:10px 0;">10</h3>
+
+    <p id="generatedKey" style="color:#0f0;font-weight:bold;"></p>
+    <button id="copyBtn" style="display:none;" onclick="copyKey()">نسخ مفتاح التفعيل</button>
+    <p id="copyMsg"></p>
+</div>
+
+<!-- ====================== تسجيل الدخول ====================== -->
+<div class="centerBox" id="loginSection">
+    <img class="avatar" src="https://i.imgur.com/1XK9FqC.png">
+    <h2>WELCOME BACK!</h2>
+
+    <input id="user" placeholder="اسم المستخدم">
+    <input id="pass" placeholder="كلمة المرور" type="password">
+    <input id="key" placeholder="مفتاح التفعيل">
+    <button onclick="login()">تسجيل الدخول</button>
+
+    <p id="loginMsg" style="color:red;margin-top:10px;"></p>
+</div>
+
+<!-- ====================== مولد كلمات المرور ====================== -->
+<div class="centerBox" id="generatorSection">
+    <img class="avatar" src="https://i.imgur.com/1XK9FqC.png">
+    <h2>PASS GENERATOR</h2>
+
+    <input id="ssid" placeholder="اسم الشبكة">
+    <button onclick="generatePass()">توليد كلمة مرور قوية</button>
+
+    <p id="result" style="color:#0f0;font-size:19px;margin-top:15px;"></p>
+
+    <!-- زر نسخ كلمة المرور -->
+    <button id="copyPassBtn" style="display:none;" onclick="copyPassword()">نسخ كلمة المرور</button>
+    <p id="copyPassMsg"></p>
+</div>
+
+<script>
+/* نجوم الخلفية */
+for (let i = 0; i < 130; i++) {
+    let s = document.createElement("div");
+    s.className = "star";
+    s.style.left = Math.random() * 100 + "vw";
+    s.style.animationDuration = (2 + Math.random() * 6) + "s";
+    s.style.animationDelay = Math.random() * 5 + "s";
+    document.body.appendChild(s);
+}
+
+/* تشغيل صفحة التفعيل أولاً */
+document.getElementById("activationSection").style.display = "block";
+
+let seconds = 10;
+let realActivationKey = "";
+
+/* عداد التفعيل */
+let timer = setInterval(() => {
+    seconds--;
+    document.getElementById("timer").innerText = seconds;
+
+    if (seconds <= 0) {
+        clearInterval(timer);
+
+        realActivationKey = "KEY-" + Math.random().toString(36).substring(2, 10).toUpperCase();
+        document.getElementById("generatedKey").innerText = "مفتاح التفعيل: " + realActivationKey;
+
+        document.getElementById("copyBtn").style.display = "block";
+
+        setTimeout(() => {
+            activationSection.style.display = "none";
+            loginSection.style.display = "block";
+        }, 3000);
+    }
+}, 1000);
+
+/* زر نسخ مفتاح التفعيل */
+function copyKey() {
+    navigator.clipboard.writeText(realActivationKey).then(() => {
+        copyMsg.innerText = "✔ تم النسخ!";
+    });
+}
+
+/* تسجيل الدخول */
+function login() {
+    let u = user.value;
+    let p = pass.value;
+    let k = key.value;
+
+    if (u === "PASSGEN" && p === "pass1233wifi" && k === realActivationKey) {
+        loginSection.style.display = "none";
+        generatorSection.style.display = "block";
+    } else {
+        loginMsg.innerText = "❌ بيانات غير صحيحة!";
+    }
+}
+
+/* توليد كلمة المرور */
+function generatePass() {
+    let ssidVal = ssid.value;
+
+    if (!ssidVal) {
+        result.innerText = "يرجى كتابة اسم الشبكة";
+        return;
+    }
+
+    let chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let pass = "";
+    for (let i = 0; i < 16; i++)
+        pass += chars[Math.floor(Math.random() * chars.length)];
+
+    result.innerText = `كلمة مرور (${ssidVal.toUpperCase()}): ${pass}`;
+
+    copyPassBtn.style.display = "block";
+    copyPassMsg.innerText = "";
+}
+
+/* نسخ كلمة المرور */
+function copyPassword() {
+    let finalText = result.innerText.split(": ")[1];
+    navigator.clipboard.writeText(finalText).then(() => {
+        copyPassMsg.innerText = "✔ تم النسخ!";
+    });
+}
+</script>
+
+</body>
+</html>
